@@ -1,2 +1,9 @@
 C:\Users\pejain\Desktop\Hack\StaffHub_Holiday\StaffHub_Holiday\bin\Debug\StaffHub_Holiday.exe.config
 C:\Users\pejain\Desktop\StaffHub_Holiday\StaffHub_Holiday\bin\Debug\StaffHub_Holiday.exe.config
+C:\Users\pejain\Desktop\StaffHub_Holiday\StaffHub_Holiday\bin\Debug\StaffHub_Holiday.exe
+C:\Users\pejain\Desktop\StaffHub_Holiday\StaffHub_Holiday\bin\Debug\StaffHub_Holiday.pdb
+C:\Users\pejain\Desktop\StaffHub_Holiday\StaffHub_Holiday\obj\Debug\StaffHub_Holiday.csprojResolveAssemblyReference.cache
+C:\Users\pejain\Desktop\StaffHub_Holiday\StaffHub_Holiday\obj\Debug\StaffHub_Holiday.exe
+C:\Users\pejain\Desktop\StaffHub_Holiday\StaffHub_Holiday\obj\Debug\StaffHub_Holiday.pdb
+C:\Users\pejain\Desktop\StaffHub_Holiday\StaffHub_Holiday\bin\Debug\Newtonsoft.Json.dll
+C:\Users\pejain\Desktop\StaffHub_Holiday\StaffHub_Holiday\bin\Debug\Newtonsoft.Json.xml
