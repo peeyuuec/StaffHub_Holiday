@@ -110,7 +110,16 @@ namespace StaffHub_Holiday
         static void Main(string[] args)
         {
 
-            
+            RestClient rest = new RestClient();
+            var client = new RestClient();
+            client.EndPoint = @"https://restcountries.eu/rest/v2/all"; ;
+            client.Method = HttpVerb.GET;
+            client.PostData = "{postData: value}";
+            var result = client.MakeRequest();
+            //var objects = JArray.Parse(json); // parse as array  
+            // JObject json = JObject.Parse(result);
+            Console.WriteLine(json);
+            Console.ReadLine();
         }
     }
 }
