@@ -114,7 +114,9 @@ namespace StaffHub_Holiday
         public Dictionary<string, string> locationMapping = new Dictionary<string, string>
         {
             { "Calcutta", "India" },
-            { "US", "United States" }
+            { "Indiana", "United States" },
+            { "Beiging", "China" },
+            { "America", "United States" }
         };
         public string decodeGeographic(string geoLocation)
         {
@@ -225,10 +227,10 @@ namespace StaffHub_Holiday
                 if (line.Length >0) {
                     if (line[0] == '[')
                     {
-                        var splits = line.Split(' ');
+                        var splits = line.Split(']');
                         country = splits[0];
                         country=country.Replace("[", string.Empty);
-                        country=country.Replace("]", string.Empty);
+                        //country=country.Replace("]", string.Empty);
 
                     }
                     else
@@ -290,18 +292,85 @@ namespace StaffHub_Holiday
         }
 
     }
+    public class RestAPIUtils
+    {
+        string TenantId;
+        List<string> TeamIds; 
+        public RestAPIUtils()
+        {
+            TenantId = "";
+            TeamIds = new List<string>();
+        }
+        public string GetTenentTeamId(string ShiftURL,string AuthToken)
+        {
+            string ReturnCode = "success";
+            string URL = ShiftURL + "account/GetCurrentAccount";
+            var client = new RestClient();
+            client.EndPoint = URL;
+            client.Method = HttpVerb.GET;
+            client.ContentType = "application/json";
+            client.AuthToken = AuthToken;
+            var result = client.MakeRequest();
+            JObject json = JObject.Parse(result);
+            TenantId = json["user"]["tenantId"].ToString();
+            var TeamsIdArray = json["user"]["teamIds"];
+            foreach(var team in TeamsIdArray)
+            {
+                TeamIds.Add(team.ToString());
+                Console.WriteLine(team.ToString());
+            }
+            return ReturnCode;
+        }
+        public string GetTeamGeoLocation(string ShiftrURL, string AuthToken,string TenantId,string TeamId)
+        {
+            var client = new RestClient();
+            client.Method = HttpVerb.GET;
+            client.ContentType = "application/json";
+            client.AuthToken = AuthToken;
+            client.EndPoint = ShiftrURL + "tenants/" + TenantId + "/teams/" + TeamId + "/teamsettings";
+            var result = client.MakeRequest();
+            JObject json = JObject.Parse(result);
+            JsonParser parse = new JsonParser();
+            string teamCountry = parse.getTeamLocation(json);
+            Console.WriteLine(teamCountry);
+            return teamCountry;
+        }
+        public string MarkHolidaysOnStaffHub(string ShiftrURL, string AuthToken,string InputFileAddress)
+        {
+            string status = "success";
+            /*  Load data into dictionary */
+            ReadHolidaydata ReadData = new ReadHolidaydata();
+            HolidayData HolidayDataObject = ReadData.ReadDataFromFile(InputFileAddress);
+
+            HolidayRestAPI HolidayRestAPIObject = new HolidayRestAPI();
+            foreach (string TeamId in TeamIds)
+            {
+
+                string GeoLocation=GetTeamGeoLocation(ShiftrURL, AuthToken, TenantId, TeamId);
+                Console.WriteLine(GeoLocation);
+                Console.ReadLine();
+                HolidayRestAPIObject.updatedayNotes(GeoLocation, HolidayDataObject, TenantId, TeamId, ShiftrURL, AuthToken);
+            }
+            return status;
+        }
+    }  
     class Program
     {   
         
         static void Main(string[] args)
         {
             string InputFileAddress = "input.txt";
-            RestClient rest = new RestClient();
-            var client = new RestClient();
-            string AuthToken= "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsIng1dCI6Imh4dmc0cjNUQjRRZEFjZ1ZHdUp4ZlMyNTgzWSIsImtpZCI6Imh4dmc0cjNUQjRRZEFjZ1ZHdUp4ZlMyNTgzWSJ9.eyJhdWQiOiJhYTU4MDYxMi1jMzQyLTRhY2UtOTA1NS04ZWRlZTQzY2NiODkiLCJpc3MiOiJodHRwczovL3N0cy53aW5kb3dzLXBwZS5uZXQvZjY4NmQ0MjYtOGQxNi00MmRiLTgxYjctYWI1NzhlMTEwY2NkLyIsImlhdCI6MTUwMTA0NDUzOSwibmJmIjoxNTAxMDQ0NTM5LCJleHAiOjE1MDEwNDg0MzksImFpbyI6IkFTUUEyLzhHQUFBQUxvM0RVaGpjalFQbklSbXRZU2ZPcmpGWTk3ZFZJcS8wdzR5YmdaVzhFY2c9IiwiYW1yIjpbInJzYSIsIm1mYSJdLCJhdF9oYXNoIjoiLURUVVVBRVV2UHJmNjQ2alZMdzZyUSIsImZhbWlseV9uYW1lIjoiSmFpbiIsImdpdmVuX25hbWUiOiJQZWV5dXNoIiwiaW5fY29ycCI6InRydWUiLCJpcGFkZHIiOiIxNjcuMjIwLjIzOC4xNTYiLCJuYW1lIjoiUGVleXVzaCBKYWluIiwibm9uY2UiOiI3NWMxMjQxNy05MWE5LTQ4ODgtYjk5OS02ZmI4NTQ0ZDZmZGUiLCJvaWQiOiJlYWY5ZTQyOS1jYmQ0LTRhNmEtYTUwNS04Nzc5NjFhMWNlYzAiLCJvbnByZW1fc2lkIjoiUy0xLTUtMjEtMjE0Njc3MzA4NS05MDMzNjMyODUtNzE5MzQ0NzA3LTIyNDEwOTUiLCJwbGF0ZiI6IjMiLCJwdWlkIjoiMTAwMzAwMDBBMjJGMkZBRCIsInN1YiI6IldFTWw4Nm51SjZQenRaVkxSSHFzWm1YbVVoTFRhNWVJVGNNcTRsMDdhY3ciLCJ0aWQiOiJmNjg2ZDQyNi04ZDE2LTQyZGItODFiNy1hYjU3OGUxMTBjY2QiLCJ1bmlxdWVfbmFtZSI6InBlamFpbkBtaWNyb3NvZnQuY29tIiwidXBuIjoicGVqYWluQG1pY3Jvc29mdC5jb20iLCJ2ZXIiOiIxLjAifQ.X_ZAAOpeflWe14dP7OYPv9Le04QA3RIAeVFnU5DOlTcIpqXeDbfncJOwRJlzZ_r4rsqIEXTFOXHrbBLdiomFgAD4z0ZgFkqpEOyRJMCcAdE317R_3NL917k0h3Hc10YsoILvzgqDEkSN_EXxdDLqt6h4mdfD4FUwe8DK5DTYtEYqvau8_px90IQ1mvGqGVaMA18QyM8FVYRG50PAmjC0guEgoKIZ3e_zAVLAypbjjzQ6F_9HBIzHMTrS74r3IrXYv6MC89UpG2iyGpMTEcXO8N_-t7PkdnlUajCkfFlNpABeiKqdTZrU3YgAZuHG-anSAOBHjU-0YwaZlNfSPiAeuA";
-            string TenantID = "f686d426-8d16-42db-81b7-ab578e110ccd";
-            string TeamID = "TEAM_f85769cc-99fe-4568-92c6-3c52abb858d5";
+            
+            string AuthToken= "	Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsIng1dCI6Imh4dmc0cjNUQjRRZEFjZ1ZHdUp4ZlMyNTgzWSIsImtpZCI6Imh4dmc0cjNUQjRRZEFjZ1ZHdUp4ZlMyNTgzWSJ9.eyJhdWQiOiJhYTU4MDYxMi1jMzQyLTRhY2UtOTA1NS04ZWRlZTQzY2NiODkiLCJpc3MiOiJodHRwczovL3N0cy53aW5kb3dzLXBwZS5uZXQvZjY4NmQ0MjYtOGQxNi00MmRiLTgxYjctYWI1NzhlMTEwY2NkLyIsImlhdCI6MTUwMTA0ODc3OSwibmJmIjoxNTAxMDQ4Nzc5LCJleHAiOjE1MDEwNTI2NzksImFpbyI6IkFTUUEyLzhHQUFBQSt0eWZmTjJ0YnFQc3JFNENhQ3kyNjJYdml1M2NmYzJOTndsN21NS0FNK1k9IiwiYW1yIjpbInJzYSIsIm1mYSJdLCJhdF9oYXNoIjoicEpaQ3hnQnhOMmhmU1YtMDl5TUVkdyIsImZhbWlseV9uYW1lIjoiSmFpbiIsImdpdmVuX25hbWUiOiJQZWV5dXNoIiwiaW5fY29ycCI6InRydWUiLCJpcGFkZHIiOiIxNjcuMjIwLjIzOC4xNTYiLCJuYW1lIjoiUGVleXVzaCBKYWluIiwibm9uY2UiOiI2MmNhNGMyYi0yNmYwLTRkOTQtOTA3NC0zZDUyZGMzNmEzOGUiLCJvaWQiOiJlYWY5ZTQyOS1jYmQ0LTRhNmEtYTUwNS04Nzc5NjFhMWNlYzAiLCJvbnByZW1fc2lkIjoiUy0xLTUtMjEtMjE0Njc3MzA4NS05MDMzNjMyODUtNzE5MzQ0NzA3LTIyNDEwOTUiLCJwbGF0ZiI6IjMiLCJwdWlkIjoiMTAwMzAwMDBBMjJGMkZBRCIsInN1YiI6IldFTWw4Nm51SjZQenRaVkxSSHFzWm1YbVVoTFRhNWVJVGNNcTRsMDdhY3ciLCJ0aWQiOiJmNjg2ZDQyNi04ZDE2LTQyZGItODFiNy1hYjU3OGUxMTBjY2QiLCJ1bmlxdWVfbmFtZSI6InBlamFpbkBtaWNyb3NvZnQuY29tIiwidXBuIjoicGVqYWluQG1pY3Jvc29mdC5jb20iLCJ2ZXIiOiIxLjAifQ.bCudHLHW6OtIJiSoHnQsO0JDetb6ipoQbOFhKu8U0MgNYJix6UZMUbkV_By7YqZKS4cc_KWXZbgSpg-8zf4TzsLzMlUXW4jBkLx-E6JmGrzoEfLjiE2A4H5kr-48i8cc6b9TUTna_wyA2odj157QgMyhbw69ZHdZPnPycBnjL6YjbnBnKC6yIw2lCM7zatjQDRZBefOx8QhQHrjIBZB8xhYpnXi6SEweHxi-D7NGAKwmhG9DaAffemYfKVQnycpcG7uT5sHmNK3QUjjwET1ITcPbpHWiubqhmvOnF43fCz-P6YvEPBXfz5qiCF6aFlBEShp3flWZvwbvm2Yj8QHUVg";
+            
             string ShiftrURL = "http://localhost:45094/api/";
+
+            RestAPIUtils RestAPIUtilsObject = new RestAPIUtils();
+            RestAPIUtilsObject.GetTenentTeamId(ShiftrURL, AuthToken);
+            RestAPIUtilsObject.MarkHolidaysOnStaffHub(ShiftrURL, AuthToken, InputFileAddress);
+            /*var client = new RestClient();
+             * string TenantID = "f686d426-8d16-42db-81b7-ab578e110ccd";
+            string TeamID = "TEAM_f85769cc-99fe-4568-92c6-3c52abb858d5";
             client.EndPoint = @"http://localhost:45094/api/tenants/f686d426-8d16-42db-81b7-ab578e110ccd/teams/TEAM_19b97c43-1398-4e9f-9678-01cd7d20dc71/teamsettings"; ;
             client.Method = HttpVerb.GET;
             client.ContentType = "application/json";
@@ -309,8 +378,8 @@ namespace StaffHub_Holiday
                  var result = client.MakeRequest();
              JObject json = JObject.Parse(result);
              JsonParser parse = new JsonParser();
-             string teamCountry = parse.getTeamLocation(json);
-             ReadHolidaydata ReadData = new ReadHolidaydata();
+             string teamCountry = parse.getTeamLocation(json);*/
+            /* ReadHolidaydata ReadData = new ReadHolidaydata();
              HolidayData HolidayDataObject = ReadData.ReadDataFromFile(InputFileAddress);
             //HolidayData HolidayDataObject=null;
             //string teamCountry = "India";
@@ -318,6 +387,8 @@ namespace StaffHub_Holiday
             HolidayRestAPIObject.updatedayNotes(teamCountry, HolidayDataObject,TenantID,TeamID,ShiftrURL,AuthToken);
             //Console.WriteLine(HolidayDataObject.CountrySpecificHolidays["India"]["2017"].First().HolidayName);
             //Console.WriteLine(teamCountry.ToString());
+            */
+
             Console.ReadLine();
         }
     }
